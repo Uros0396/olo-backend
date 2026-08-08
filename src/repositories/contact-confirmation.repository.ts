@@ -1,22 +1,50 @@
 import type { StoredContactPayload } from "../dto/contact.dto.js";
-import { redis } from "../config/redis.js";
+import { PendingContactModel } from "../models/pending-contact.model.js";
 
-const TOKEN_TTL_SECONDS = 15 * 60;
-const confirmationKey = (token: string) => `contact-confirmation:${token}`;
+const TOKEN_TTL_MS = 15 * 60 * 1_000;
 
 export const contactConfirmationRepository = {
-  async save(token: string, payload: StoredContactPayload): Promise<void> {
-    await redis.set(confirmationKey(token), JSON.stringify(payload), {
-      EX: TOKEN_TTL_SECONDS,
+  async save(tokenHash: string, payload: StoredContactPayload): Promise<string> {
+    const contact = await PendingContactModel.create({
+      ...payload,
+      tokenHash,
+      status: "pending",
+      expiresAt: new Date(Date.now() + TOKEN_TTL_MS),
     });
+    return contact.id as string;
   },
 
-  async find(token: string): Promise<StoredContactPayload | null> {
-    const stored = await redis.get(confirmationKey(token));
-    return stored ? JSON.parse(stored) as StoredContactPayload : null;
+  async claim(tokenHash: string): Promise<(StoredContactPayload & { id: string }) | null> {
+    const contact = await PendingContactModel.findOneAndUpdate(
+      {
+        tokenHash,
+        status: "pending",
+        expiresAt: { $gt: new Date() },
+      },
+      { $set: { status: "processing" } },
+      { new: true },
+    ).lean();
+
+    if (!contact) return null;
+
+    return {
+      id: contact._id.toString(),
+      name: contact.name,
+      surname: contact.surname,
+      email: contact.email,
+      phone: contact.phone,
+      message: contact.message,
+    };
   },
 
-  async delete(token: string): Promise<void> {
-    await redis.del(confirmationKey(token));
+  async release(id: string): Promise<void> {
+    await PendingContactModel.updateOne(
+      { _id: id, status: "processing" },
+      { $set: { status: "pending" } },
+    );
+  },
+
+  async delete(id: string): Promise<void> {
+    await PendingContactModel.deleteOne({ _id: id });
   },
 };

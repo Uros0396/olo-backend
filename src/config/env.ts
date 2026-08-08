@@ -6,7 +6,7 @@ const envSchema = z.object({
   PORT: z.coerce.number().int().positive().default(4000),
   APP_URL: z.string().url().optional(),
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
-  REDIS_URL: z.string().url().default("redis://localhost:6379"),
+  MONGODB_URI: z.string().min(1),
   SMTP_HOST: z.string().min(1),
   SMTP_PORT: z.coerce.number().int().positive().default(587),
   SMTP_USER: z.string().min(1),
