@@ -1,4 +1,7 @@
 import { env } from "../config/env.js";
+import { AppError } from "../errors/app-error.js";
+
+const BREVO_TIMEOUT_MS = 10_000;
 
 interface SendMailInput {
   to: string;
@@ -21,6 +24,7 @@ export const mailService = {
   async send({ to, subject, text, replyTo }: SendMailInput): Promise<void> {
     const response = await fetch("https://api.brevo.com/v3/smtp/email", {
       method: "POST",
+      signal: AbortSignal.timeout(BREVO_TIMEOUT_MS),
       headers: {
         accept: "application/json",
         "api-key": env.BREVO_API_KEY,
@@ -37,7 +41,8 @@ export const mailService = {
 
     if (!response.ok) {
       const details = await response.text();
-      throw new Error(`Brevo API ${response.status}: ${details}`);
+      console.error(`Brevo API ${response.status}: ${details}`);
+      throw new AppError(502, "Servizio email temporaneamente non disponibile.");
     }
   },
 };
