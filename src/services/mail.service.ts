@@ -1,15 +1,4 @@
-import nodemailer from "nodemailer";
 import { env } from "../config/env.js";
-
-const transporter = nodemailer.createTransport({
-  host: env.SMTP_HOST,
-  port: env.SMTP_PORT,
-  secure: env.SMTP_PORT === 465,
-  auth: {
-    user: env.SMTP_USER,
-    pass: env.SMTP_PASS,
-  },
-});
 
 interface SendMailInput {
   to: string;
@@ -18,14 +7,37 @@ interface SendMailInput {
   replyTo?: string;
 }
 
+const parseSender = (value: string): { name?: string; email: string } => {
+  const match = value.match(/^\s*(.*?)\s*<([^<>]+)>\s*$/);
+
+  if (match) {
+    return { name: match[1].trim() || undefined, email: match[2].trim() };
+  }
+
+  return { email: value.trim() };
+};
+
 export const mailService = {
   async send({ to, subject, text, replyTo }: SendMailInput): Promise<void> {
-    await transporter.sendMail({
-      from: env.SMTP_FROM,
-      to,
-      replyTo,
-      subject,
-      text,
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        accept: "application/json",
+        "api-key": env.BREVO_API_KEY,
+        "content-type": "application/json",
+      },
+      body: JSON.stringify({
+        sender: parseSender(env.SMTP_FROM),
+        to: [{ email: to }],
+        replyTo: replyTo ? { email: replyTo } : undefined,
+        subject,
+        textContent: text,
+      }),
     });
+
+    if (!response.ok) {
+      const details = await response.text();
+      throw new Error(`Brevo API ${response.status}: ${details}`);
+    }
   },
 };

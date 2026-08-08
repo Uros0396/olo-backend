@@ -7,10 +7,7 @@ const envSchema = z.object({
   APP_URL: z.string().url().optional(),
   FRONTEND_URL: z.string().url().default("http://localhost:3000"),
   MONGODB_URI: z.string().min(1),
-  SMTP_HOST: z.string().min(1),
-  SMTP_PORT: z.coerce.number().int().positive().default(587),
-  SMTP_USER: z.string().min(1),
-  SMTP_PASS: z.string().min(1),
+  BREVO_API_KEY: z.string().min(1),
   SMTP_FROM: z.string().min(1),
   SMTP_TO: z.string().email(),
 });
