@@ -11,7 +11,8 @@ export const requestContactConfirmation = async (
   await contactService.requestConfirmation(req.body);
   res.status(200).json({
     success: true,
-    message: "Controlla la tua email e conferma il messaggio per inviarlo.",
+    message:
+      "Ti abbiamo inviato un'email di conferma. Aprila e clicca sul link entro 15 minuti per inviare il messaggio. Se non la trovi, controlla anche la cartella Spam o Posta indesiderata.",
   });
 };
 
